@@ -30,8 +30,25 @@ ui <- fluidPage(
 
     tabPanel("Individual donor stats",
 
-             plotOutput("forms_times_donation_plot")
-             ),
+             sidebarLayout(
+               sidebarPanel(
+
+                 checkboxGroupInput("donation_form", "Form of donation",
+                             choices = c("Cash", "Cheque", "BACS")),
+                 selectInput("donation_reservation", "Reserved for:",
+                             choices = c("All", "Unreserved", "Waterways", "Amber",
+                                         "Marylebone")
+                             ),
+                 dateRangeInput("individual_donation_dates",
+                           "Donate between",
+                           start = Sys.Date() - 30,
+                           end = Sys.Date())
+               ),
+               mainPanel(
+
+                 plotOutput("forms_times_donation_plot")
+                 )
+             )),
 
     tabPanel("Organisation donor stats",
 
