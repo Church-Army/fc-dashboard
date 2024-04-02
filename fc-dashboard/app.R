@@ -1,51 +1,89 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    https://shiny.posit.co/
-#
-
 library(shiny)
+library(scales)
+library(palmerpenguins)
+library(carutools)
+library(ggplot2)
+
+placeholder_plot <-
+  ggplot(penguins, aes(x = bill_depth_mm, y = bill_length_mm,
+                       colour = species)) +
+  geom_point() +
+  theme_ca("black")
+
+## TODO:
+## * Create function that applies default theme elements to each plot
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
+  tabsetPanel(
 
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
+    tabPanel("Homepage",
 
-        # Show a plot of the generated distribution
-        mainPanel(
-           plotOutput("distPlot")
-        )
-    )
-)
+               p("We have recived", textOutput("received_this_month", inline = TRUE),
+               " so far this month",
+               " from ", textOutput("donors_this_month", inline = TRUE), " donors.",
+               style = "font-size: 25px;"),
 
-# Define server logic required to draw a histogram
-server <- function(input, output) {
+             plotOutput("giving_overview_plot")
+             ),
 
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
+    tabPanel("Individual donor stats",
 
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
-    })
+             plotOutput("forms_times_donation_plot")
+             ),
+
+    tabPanel("Organisation donor stats",
+
+             plotOutput("organisation_donor_plot")
+             ),
+
+    tabPanel("Online engagement",
+
+             plotOutput("online_engagement_plot")
+             )
+))
+
+
+server <- function(input, output){
+
+  #### Homepage ----------------------------------------------------------------
+  output$received_this_month <- renderText(label_dollar(prefix = "£")(50000))
+
+  output$donors_this_month   <- renderText(label_comma()(100))
+
+  output$giving_overview_plot <- renderPlot({
+    ggplot(penguins, aes(x = bill_depth_mm, y = bill_length_mm,
+                         colour = species)) +
+      geom_point() +
+      theme_ca("black") +
+      ggtitle("Donation summary") +
+      facet_wrap(~ species, dir = "v")
+  })
+
+  #### Individual donors -------------------------------------------------------
+
+  output$forms_times_donation_plot <- renderPlot({
+    placeholder_plot +
+      ggtitle("Individual donations")
+
+  })
+
+  #### Organisation donors -----------------------------------------------------
+
+  output$organisation_donor_plot <- renderPlot({
+    placeholder_plot +
+      ggtitle("Organisation donations")
+
+  })
+  #### Online engagement -------------------------------------------------------
+
+  output$online_engagement_plot <- renderPlot({
+    placeholder_plot +
+      ggtitle("Online Engagement")
+
+  })
 }
 
-# Run the application 
+# Run the application
 shinyApp(ui = ui, server = server)
