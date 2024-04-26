@@ -34,7 +34,6 @@ weekify <- function(x){
 
 ## Read in Data ----------------------------------------------------------------
 
-
 ### Raiser's edge data ---------------------------------------------------------
 query_1 <- vroom("app-inputs/raisers-edge-query_1.csv")
 
