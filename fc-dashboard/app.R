@@ -45,7 +45,9 @@ mailchimp <-
   vroom("app-inputs/mailchimp.csv") |>
   clean_names() |>
   mutate(month = monthify(email_sent_time),
-         week = weekify(email_sent_time))
+         week = weekify(email_sent_time),
+         weekday = wday(email_sent_time, label = TRUE))
+
 mailchimp <-
   mutate(
     mailchimp,
@@ -186,29 +188,45 @@ server <- function(input, output){
   output$mailchimp_weekday_plot <- renderPlot({
 
 
-    mailchimp |>
+    emails_by_weekday <-
 
-      mutate(weekday  = wday(email_sent_time, label = TRUE)) |>
+      mutate(mailchimp, n_days = n(), .by = weekday) |>
 
-      mutate(weekday_click_rate = mean(click_rate), .by = weekday) |>
+      summarise(click_rate = mean(click_rate),
+                mean_emails = n()/unique(n_days),
+                .by = c(email_type, weekday))
 
-      summarise(click_rate = mean(click_rate), .by = c(email_type, weekday, weekday_click_rate)) |>
+    average_click_rate <-
+      mutate(mailchimp, email_type = "All emails") |>
+      summarise(click_rate = mean(click_rate), .by = c(email_type, weekday))
 
-           ggplot(
-                 aes(y = click_rate,
-                     x = weekday,
-                     fill = email_type,
-                     colour = email_type
-                     )) +
+    rbind(emails_by_weekday) |>
 
-           geom_point(size = 6, alpha = 0.75, shape = 21, stroke = 1.5) +
+      ggplot(aes(y = click_rate,
+                 x = weekday,
+                 fill = email_type,
+                 colour = email_type
+                 )) +
 
-      ca_scale_fill_discrete() +
-      ca_scale_colour_discrete() +
+      geom_point(aes(size = mean_emails),
+                 alpha = 0.75, shape = 21, stroke = 1.5) +
+
+      geom_line(data = average_click_rate, aes(group = 1),
+                linetype = "dashed", linewidth = 1, alpha = 0.8) +
+
+      ca_scale_fill_discrete(name = "Email type") +
+      ca_scale_colour_discrete(name = "Email type") +
+      scale_size_area(name = "Average emails", max_size = 9) +
 
       scale_y_continuous(labels = percent_format()) +
 
-      theme_minimal()
+      theme_minimal() +
+
+      labs(
+        x = "Weekday",
+        y = "Click rate",
+        title = "Average click rate by email type and weekday-sent"
+      )
 
   })
 }
