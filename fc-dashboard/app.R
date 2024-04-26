@@ -183,8 +183,11 @@ server <- function(input, output){
 
 
     emails_by_weekday <-
-      summarise(mailchimp,
-                click_rate = mean(click_rate),
+
+      mutate(mailchimp, n_days = n(), .by = weekday) |>
+
+      summarise(click_rate = mean(click_rate),
+                mean_emails = n()/unique(n_days),
                 .by = c(email_type, weekday))
 
     average_click_rate <-
@@ -199,16 +202,25 @@ server <- function(input, output){
                  colour = email_type
                  )) +
 
-      geom_point(size = 6, alpha = 0.75, shape = 21, stroke = 1.5) +
+      geom_point(aes(size = mean_emails),
+                 alpha = 0.75, shape = 21, stroke = 1.5) +
+
       geom_line(data = average_click_rate, aes(group = 1),
                 linetype = "dashed", linewidth = 1, alpha = 0.8) +
 
-      ca_scale_fill_discrete() +
-      ca_scale_colour_discrete() +
+      ca_scale_fill_discrete(name = "Email type") +
+      ca_scale_colour_discrete(name = "Email type") +
+      scale_size_area(name = "Average emails", max_size = 9) +
 
       scale_y_continuous(labels = percent_format()) +
 
-      theme_minimal()
+      theme_minimal() +
+
+      labs(
+        x = "Weekday",
+        y = "Click rate",
+        title = "Average click rate by email type and weekday-sent"
+      )
 
   })
 }
