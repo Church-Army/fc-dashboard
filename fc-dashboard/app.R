@@ -34,6 +34,12 @@ weekify <- function(x){
 
 ## Read in Data ----------------------------------------------------------------
 
+
+### Raiser's edge data ---------------------------------------------------------
+query_1 <- vroom("app-inputs/query_1.csv")
+
+query_2 <- vroom("app-inputs/query_2.CSV")
+
 ### Mailchimp data -------------------------------------------------------------
 mailchimp <-
   vroom("app-inputs/mailchimp.csv") |>
