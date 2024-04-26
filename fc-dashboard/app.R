@@ -39,7 +39,9 @@ mailchimp <-
   vroom("app-inputs/mailchimp.csv") |>
   clean_names() |>
   mutate(month = monthify(email_sent_time),
-         week = weekify(email_sent_time))
+         week = weekify(email_sent_time),
+         weekday = wday(email_sent_time, label = TRUE))
+
 mailchimp <-
   mutate(
     mailchimp,
@@ -180,22 +182,26 @@ server <- function(input, output){
   output$mailchimp_weekday_plot <- renderPlot({
 
 
-    mailchimp |>
+    emails_by_weekday <-
+      summarise(mailchimp,
+                click_rate = mean(click_rate),
+                .by = c(email_type, weekday))
 
-      mutate(weekday  = wday(email_sent_time, label = TRUE)) |>
+    average_click_rate <-
+      mutate(mailchimp, email_type = "All emails") |>
+      summarise(click_rate = mean(click_rate), .by = c(email_type, weekday))
 
-      mutate(weekday_click_rate = mean(click_rate), .by = weekday) |>
+    rbind(emails_by_weekday) |>
 
-      summarise(click_rate = mean(click_rate), .by = c(email_type, weekday, weekday_click_rate)) |>
+      ggplot(aes(y = click_rate,
+                 x = weekday,
+                 fill = email_type,
+                 colour = email_type
+                 )) +
 
-           ggplot(
-                 aes(y = click_rate,
-                     x = weekday,
-                     fill = email_type,
-                     colour = email_type
-                     )) +
-
-           geom_point(size = 6, alpha = 0.75, shape = 21, stroke = 1.5) +
+      geom_point(size = 6, alpha = 0.75, shape = 21, stroke = 1.5) +
+      geom_line(data = average_click_rate, aes(group = 1),
+                linetype = "dashed", linewidth = 1, alpha = 0.8) +
 
       ca_scale_fill_discrete() +
       ca_scale_colour_discrete() +
