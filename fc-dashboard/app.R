@@ -6,6 +6,8 @@ library(vroom)
 library(lubridate)
 library(janitor)
 library(tidyverse)
+library(openssl)
+
 
 placeholder_plot <-
   ggplot(penguins, aes(x = bill_depth_mm, y = bill_length_mm,
@@ -31,15 +33,26 @@ weekify <- function(x){
   make_date(year) + weeks_to_add
 }
 
+decrypt_data <- function(path, key_path = "app-secrets/rsa-key.RDS"){
+
+  envelope <- readRDS(path)
+  key <- readRDS(key_path)
+
+  data <- decrypt_envelope(envelope$data, envelope$iv, envelope$session, key = key)
+
+  data |>
+    rawToChar() |>
+    I() |>
+    vroom()
+}
 
 ## Read in Data ----------------------------------------------------------------
 
 ### Raiser's edge data ---------------------------------------------------------
 
-query_1 <- vroom("app-inputs/raisers-edge-query_1.csv")
+query_1 <- decrypt_data("app-inputs/raisers-edge-query_1_encrypted-csv.RDS")
 
-query_2 <- vroom("app-inputs/raisers-edge-query_2.csv")
-
+query_2 <- decrypt_data("app-inputs/raisers-edge-query_2_encrypted-csv.RDS")
 
 ### Mailchimp data -------------------------------------------------------------
 mailchimp <-
