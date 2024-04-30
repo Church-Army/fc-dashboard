@@ -34,11 +34,12 @@ weekify <- function(x){
 
 ## Read in Data ----------------------------------------------------------------
 
-
 ### Raiser's edge data ---------------------------------------------------------
-query_1 <- vroom("app-inputs/query1.csv")
 
-query_2 <- vroom("app-inputs/query2.csv")
+query_1 <- vroom("app-inputs/raisers-edge-query_1.csv")
+
+query_2 <- vroom("app-inputs/raisers-edge-query_2.csv")
+
 
 ### Mailchimp data -------------------------------------------------------------
 mailchimp <-
@@ -120,18 +121,10 @@ ui <- fluidPage(
 server <- function(input, output){
 
   #### Homepage ----------------------------------------------------------------
-  output$received_this_month <- renderText(label_dollar(prefix = "£")(50000))
+  output$received_this_month <- renderText(label_dollar(prefix = "£")(sum(query_1$`Gift Amount`)))
 
   output$donors_this_month   <- renderText(label_comma()(100))
 
-  output$giving_overview_plot <- renderPlot({
-    ggplot(penguins, aes(x = bill_depth_mm, y = bill_length_mm,
-                         colour = species)) +
-      geom_point() +
-      theme_ca("black") +
-      ggtitle("Donation summary") +
-      facet_wrap(~ species, dir = "v")
-  })
 
   #### Individual donors -------------------------------------------------------
 
