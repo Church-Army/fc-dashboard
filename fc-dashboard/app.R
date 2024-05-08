@@ -17,29 +17,12 @@ placeholder_plot <-
 
 #-------------------------------------------------------------------------------
 
-## Helpers --------------------------------------------------------------------
-monthify <- function(x){
-  month <- month(x)
-  year <- year(x)
-  make_date(year, month)
-}
-
-weekify <- function(x){
-  week <- week(x)
-  year <- year(x)
-
-  weeks_to_add <- map_vec(week, \(x) period(x, "weeks"))
-
-  make_date(year) + weeks_to_add
-}
-
+## ggplot theme defaults -------------------------------------------------------
 
 theme_set(
   theme_minimal(base_size = 18) +
     theme(text = element_text(family = "Trebuchet MS"))
   )
-
-
 
 decrypt_data <- function(path, key_path = "app-secrets/rsa-key.RDS", ...){
 
@@ -61,7 +44,11 @@ decrypt_data <- function(path, key_path = "app-secrets/rsa-key.RDS", ...){
 query_1 <-
   decrypt_data("app-inputs/raisers-edge-query_1_encrypted-csv.RDS",
                col_types = "dcficccff") |>
-  mutate(gift_date = dmy(gift_date))
+  mutate(
+    gift_date = dmy(gift_date),
+    week  = round_date(gift_date, "week"),
+    month = round_date(gift_date, "month")
+    )
 
 query_2 <- decrypt_data("app-inputs/raisers-edge-query_2_encrypted-csv.RDS",
                         col_types = "dcficccff")
@@ -76,8 +63,8 @@ query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
 mailchimp <-
   vroom("app-inputs/mailchimp.csv") |>
   clean_names() |>
-  mutate(month = monthify(email_sent_time),
-         week = weekify(email_sent_time),
+  mutate(month = round_date(email_sent_time, "month"),
+         week  = round_date(email_sent_time, "week"),
          weekday = wday(email_sent_time, label = TRUE))
 
 mailchimp <-
