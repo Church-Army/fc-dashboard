@@ -71,6 +71,7 @@ donor_id <- str_c("d_", 1:(round(nrow(query_1)/3)))
 query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
 
 
+individual <- filter(query_1, constituency_code == "Individual")
 
 ### Mailchimp data -------------------------------------------------------------
 mailchimp <-
@@ -100,34 +101,31 @@ ui <- fluidPage(
 
 tabsetPanel(
 
-    tabPanel("Homepage",
-
+    tabPanel("Home page",
              div(style = c("font-size:30px; text-align:center; font-family:Trebuchet MS"),
 
-               p("In March, we recieved"),
+                 p("In March, we recieved"),
 
-               p(textOutput("received_this_month", inline = TRUE),
-                 div(" from", style = "color:black"),
-                 style = "color:orange"),
+                 p(textOutput("received_this_month", inline = TRUE),
+                   div(" from", style = "color:black"),
+                   style = "color:#E84619"),
 
-               p(textOutput("donors_this_month", inline = TRUE),
-                  style = "color:orange"),
+                 p(textOutput("donors_this_month", inline = TRUE),
+                   style = "color:#E84619"),
 
-               p(" donors.")),
+                 p(" individual donors.")),
 
+             plotOutput("income_sources_plot")
 
-
-             plotOutput("giving_overview_plot")
-             ),
-
+    ),
 
 
 
     tabPanel("Individual donor stats",
 
+
              sidebarLayout(
                sidebarPanel(
-
                  checkboxGroupInput("donation_form", "Form of donation",
                              choices = c("Standing Order", "Direct Debit", "Personal Cheque",
                                          "Voucher", "Cash", "Credit Card", "Business Cheque",
@@ -170,7 +168,7 @@ server <- function(input, output){
 
 
 
-max_date <- max(query_1$gift_date)
+max_date <- max(individual$gift_date)
 
 max_month <- month(max_date)
 
@@ -181,10 +179,41 @@ month_start <- make_date(max_year, max_month)
 month_end <- month_start + period(1, "months") - period(1, "days")
 
 
-  #### Homepage ----------------------------------------------------------------
-  output$received_this_month <- renderText({
+output$income_sources_plot <- renderPlot({
 
-  month_in_question <- filter(query_1, gift_date >= month_start, gift_date <= month_end)
+  summarise(query_1, gift_amount = sum(gift_amount_gbp), .by = constituency_code) |>
+
+    mutate(gift_amount_label = label_dollar(prefix = "£")(gift_amount),
+           constituency_code = fct_reorder(constituency_code, gift_amount)) |>
+    arrange(-gift_amount) |>
+
+  ggplot(aes(x = factor(1), y = gift_amount, fill = constituency_code)) +
+
+    geom_col() +
+    geom_text(aes(label = gift_amount_label),
+              position = position_stack(0.5),
+              angle = 90,
+              size = 6) +
+
+    coord_radial(
+      theta = "y",
+      expand = FALSE,
+      rotate_angle = TRUE
+    ) +
+    theme(
+      axis.text = element_blank(),
+      axis.title = element_blank()
+    ) +
+
+  ca_scale_fill_discrete(name = "Constituency Code")
+
+})
+
+#### Individual donors -------------------------------------------------------
+
+ output$received_this_month <- renderText({
+
+  month_in_question <- filter(individual, gift_date >= month_start, gift_date <= month_end)
 
      label_dollar(prefix = "£")(sum(month_in_question$gift_amount_gbp))
 
@@ -197,7 +226,7 @@ month_end <- month_start + period(1, "months") - period(1, "days")
 
   output$donors_this_month <- renderText({
 
-    month_in_question <- filter(query_1, gift_date >= month_start, gift_date <= month_end)
+    month_in_question <- filter(individual, gift_date >= month_start, gift_date <= month_end)
 
     unique_donors <- n_distinct(month_in_question$donor_id)
 
@@ -206,11 +235,10 @@ month_end <- month_start + period(1, "months") - period(1, "days")
     })
 
 
-  #### Individual donors -------------------------------------------------------
 
   output$forms_times_donation_plot <- renderPlot({
     processed <-
-      query_1 |>
+      individual |>
       mutate(new_fund_description =
                case_when(
                  fund_description == "General unrestricted"   ~ "General unrestricted",
@@ -240,6 +268,7 @@ month_end <- month_start + period(1, "months") - period(1, "days")
       labs(x = "Gift Date",
            y = "Cumulative gift amounts",
            title = "Cumulative giving from individual donors") +
+        ylim(0, 40000) +  ##take another look!
         theme(text = element_text(family = "Trebuchet MS"))
 
   })
