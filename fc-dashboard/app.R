@@ -61,7 +61,7 @@ query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
 individual <- filter(query_1, constituency_code == "Individual")
 
 
-with_addresses <- vroom("app-inputs/with_postcodes.CSV")
+with_addresses <- vroom("app-inputs/with-postcodes.CSV")
 
 ### Mailchimp data -------------------------------------------------------------
 
