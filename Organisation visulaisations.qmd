@@ -1,0 +1,73 @@
+---
+title: "Organisation visulaisations"
+format: html
+editor: visual
+---
+
+```{r Graph of parish donors vs time}
+
+just_parish <- query_1 %>%
+                  filter(constituency_code == "Parish")
+
+
+
+monthify <- function(x){
+  month <- month(x)
+  year <- year(x)
+  make_date(year, month)
+}
+
+
+
+just_parish <- mutate(just_parish, month = monthify(gift_date))
+
+
+just_parish <- summarise(just_parish, gift_amount_gbp = sum(gift_amount_gbp), .by = month)
+
+
+
+
+ggplot(just_parish, aes(x = month,
+                    y = gift_amount_gbp)) +
+geom_line(colour = ca_green(),
+          linewidth = 1.5) +
+  labs( x = "Time",
+        y = "Gift amount",
+        title = "Parish giving over time")
+```
+
+```{r Graph of trust donors vs time}
+
+just_trust <- query_1 %>%
+                  filter(constituency_code == "Trust")
+
+
+
+monthify <- function(x){
+  month <- month(x)
+  year <- year(x)
+  make_date(year, month)
+}
+
+
+just_trust <- mutate(just_trust, month = month(gift_date))
+
+
+just_trust <- summarise(just_trust, gift_amount_gbp = sum(gift_amount_gbp), .by = month)
+
+
+
+
+ggplot(just_trust, aes(x = month,
+                       y = gift_amount_gbp)) +
+geom_line(colour = ca_gold(),
+          linewidth = 1.5) +
+  labs( x = "Time",
+        y = "Gift amount",
+        title = "Trust giving over time")
+
+```
+
+```{r Amount raised through Trusts and Stat vs target}
+
+```

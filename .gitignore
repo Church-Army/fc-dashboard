@@ -9,3 +9,5 @@ fc-dashboard/app-secrets/**
 
 **.CSV
 **.csv
+
+**.geojson

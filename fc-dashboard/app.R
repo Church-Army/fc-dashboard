@@ -17,7 +17,8 @@ placeholder_plot <-
 
 #-------------------------------------------------------------------------------
 
-## Helpers --------------------------------------------------------------------
+## Helpers ---------------------------------------------------------------------
+
 monthify <- function(x){
   month <- month(x)
   year <- year(x)
@@ -73,7 +74,11 @@ query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
 
 individual <- filter(query_1, constituency_code == "Individual")
 
+
+with_addresses <- vroom("app-inputs/with_postcodes.CSV")
+
 ### Mailchimp data -------------------------------------------------------------
+
 mailchimp <-
   vroom("app-inputs/mailchimp.csv") |>
   clean_names() |>
@@ -96,7 +101,14 @@ mailchimp <-
       ordered() |>
       fct_relevel("Other", after = Inf)
   )
+### Meltwater data -------------------------------------------------------------
+
+#meltwater <- vroom("app-inputs/meltwater_data.csv")
+
+##this doesn't work
+
 #-------------------------------------------------------------------------------
+
 ui <- fluidPage(
 
 tabsetPanel(
@@ -115,7 +127,9 @@ tabsetPanel(
 
                  p(" individual donors.")),
 
-             plotOutput("income_sources_plot")
+             plotOutput("income_sources_plot"),
+
+             verbatimTextOutput("debug")
 
     ),
 
@@ -160,13 +174,14 @@ tabsetPanel(
 
     tabPanel("Online engagement",
              plotOutput("online_engagement_plot"),
-             plotOutput("mailchimp_weekday_plot")
+             plotOutput("mailchimp_weekday_plot"),
+             plotOutput("socials_engagement_plot")
     )))
 
 
 server <- function(input, output){
 
-
+output$debug <- renderPrint({print(with_addresses)})
 
 max_date <- max(individual$gift_date)
 
@@ -276,6 +291,9 @@ output$income_sources_plot <- renderPlot({
   #### Organisation donors -----------------------------------------------------
 
   output$organisation_donor_plot <- renderPlot({
+    ggplot(query_1, aes(x = ))
+
+
     placeholder_plot +
       ggtitle("Organisation donations")
 
@@ -352,7 +370,28 @@ output$income_sources_plot <- renderPlot({
       )
 
   })
-}
+
+
+  output$socials_engagement_plot <- renderPlot({
+
+
+    ggplot(meltwater_data, aes(x = `created time`,
+                           y = reactions,
+                           group = source,
+                           colour = source)) +
+
+  geom_line(size = 1.5) +
+
+  geom_point(size = 3) +
+
+  labs(x = "Time of post",
+       y = "Engagement",
+       title = "Engagement in social media posts") +
+
+  ca_scale_fill_discrete(name = "Media") +
+  ca_scale_colour_discrete(name = "Media") })
+
+   }
 
 # Run the application
 shinyApp(ui = ui, server = server)
