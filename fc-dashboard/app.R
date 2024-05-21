@@ -375,8 +375,8 @@ output$income_sources_plot <- renderPlot({
      ) +
      theme(
        axis.text = element_blank(),
-       panel.grid = element_blank()
-
+       panel.grid = element_blank(),
+       plot.caption = element_text(size = 9)
      )
 
    })
