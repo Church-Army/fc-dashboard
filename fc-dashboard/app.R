@@ -177,8 +177,8 @@ tabsetPanel(
                              ),
                  dateRangeInput("individual_donation_dates",
                            "Donate between",
-                           start = Sys.Date() - 60,
-                           end = Sys.Date())
+                           start = ymd("2024-04-04") - 60,
+                           end = ymd("2024-04-04"))
                ),
                mainPanel(
 
