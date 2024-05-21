@@ -7,6 +7,8 @@ library(lubridate)
 library(janitor)
 library(tidyverse)
 library(openssl)
+library(PostcodesioR)
+library(sf)
 
 
 placeholder_plot <-
@@ -16,6 +18,28 @@ placeholder_plot <-
   theme_ca("black")
 
 #------------------------------------------------------------------------------
+
+## postcode read helpers ------------------------------------------------------
+
+bulk_my_postcodes <- function(postcodes){
+
+  postcodes <-
+    split(postcodes, ceiling(seq_along(postcodes)/100)) |>
+    unname()
+
+  map(postcodes,
+      \(x){
+        bulk_postcode_lookup(list(postcodes = x))
+      }) |>
+    list_c()
+}
+
+get_region <- function(x){
+  reg <- pluck(x, "result", "region")
+  if(is.null(reg)) reg <- pluck(x, "result", "country")
+  reg
+}
+
 ## ggplot theme defaults -------------------------------------------------------
 
 
@@ -158,7 +182,9 @@ tabsetPanel(
                ),
                mainPanel(
 
-                 plotOutput("forms_times_donation_plot")
+                 plotOutput("forms_times_donation_plot"),
+
+                 plotOutput("uk_regions_map")
                  )
              )),
 
@@ -282,6 +308,79 @@ output$income_sources_plot <- renderPlot({
         theme(text = element_text(family = "Trebuchet MS"))
 
   })
+
+
+  #### Individual donors map --------------------------------------------------
+
+  output$uk_regions_map <- renderPlot({
+
+    postcodes_on_file <- file_exists("app-inputs/previous-postcodes.csv")
+
+    if(!postcodes_on_file) previous_postcodes <- tibble(postcode = character(), region = character())
+    else previous_postcodes <- vroom("app-inputs/previous-postcodes.csv",
+                                     col_types = "cc")
+
+    with_addresses_filtered <-
+      filter(with_addresses,
+             gift_date > input$individual_donation_dates[1],
+             gift_date < input$individual_donation_dates[2],
+             gift_payment_type %in% input$donation_form
+             ) |>
+      mutate(clean_postcode =
+               str_remove_all(preferred_postcode, " ") |>
+               str_squish())
+
+    clean_postcodes <- unique(with_addresses_filtered$clean_postcode)
+
+    unprocessed <- !clean_postcodes %in% previous_postcodes$postcode
+
+    results <-
+      bulk_my_postcodes(clean_postcodes[unprocessed]) |>
+      map(get_region)
+
+    not_null <- !map_lgl(results, is.null)
+
+   postcodes <-
+     rbind(
+       tibble(
+         postcode = clean_postcodes[unprocessed][not_null],
+         region   = as.character(results[not_null])
+         ),
+       previous_postcodes
+       )
+
+   vroom_write(postcodes, "app-inputs/previous-postcodes.csv", delim = ",")
+
+   with_addresses_filtered <- left_join(with_addresses_filtered, postcodes, by = c(clean_postcode = "postcode"))
+
+   region_shapes <- read_sf("app-inputs/gb-regions.geojson")
+
+   region_gifts <-
+     group_by(with_addresses_filtered, region) |>
+     count()
+
+   region_shapes <-
+     rename(region_shapes, region = nuts118nm) |>
+     mutate(region = str_remove(region, " \\(England\\)"))
+
+   plot_data <- left_join(region_shapes, region_gifts, by = "region")
+
+   ggplot(plot_data) +
+     geom_sf(aes(fill = n)) +
+     scale_fill_gradient(low = "white", high = ca_cyan()) +
+     labs(
+       x = NULL,
+       y = NULL,
+       caption = "NB this map is does not respond to the 'reserved for' field"
+     ) +
+     theme(
+       axis.text = element_blank(),
+       panel.grid = element_blank()
+
+     )
+
+   })
+
 
   #### Organisation donors -----------------------------------------------------
 
