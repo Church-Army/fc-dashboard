@@ -17,13 +17,6 @@ library(Microsoft365R)
 library(AzureAuth)
 library(AzureGraph)
 
-
-placeholder_plot <-
-  ggplot(penguins, aes(x = bill_depth_mm, y = bill_length_mm,
-                       colour = species)) +
-  geom_point() +
-  theme_ca("black")
-
 #------------------------------------------------------------------------------
 
 ## postcode read helpers ------------------------------------------------------
@@ -80,17 +73,12 @@ decrypt_data <- function(path, key_path = "app-secrets/rsa-key.RDS", ...){
 ### Raiser's edge data ---------------------------------------------------------
 
 query_1 <-
-  decrypt_data("app-inputs/raisers-edge-query_1_encrypted-csv.RDS",
-               col_types = "dcficccff") |>
+  vroom("app-inputs/query-1.CSV", col_types = "dcficccff") |>
   mutate(
     gift_date = dmy(gift_date),
     week  = round_date(gift_date, "week"),
     month = round_date(gift_date, "month")
     )
-
-query_2 <- decrypt_data("app-inputs/raisers-edge-query_2_encrypted-csv.RDS",
-                        col_types = "dcficccff")
-
 
 donor_id <- str_c("d_", 1:(round(nrow(query_1)/3)))
 query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
@@ -153,7 +141,7 @@ secret <- readLines("app-secrets/microsoft-app-secret")
 ## is succesful
 ui_function <- function(request){
 
-  opts <- parseQueryString(req$QUERY_STRING)
+  opts <- parseQueryString(request$QUERY_STRING)
 
   if(is.null(opts$code))
   {
@@ -250,7 +238,38 @@ tabsetPanel(
              )))
 
 
-server <- function(input, output){
+server <- function(input, output, session){
+
+  ### Teams authentification dance === === === === === === === === === === ===
+
+  # Get options from query string in the URL
+  opts <- parseQueryString(isolate(session$clientData$url_search))
+
+  # If there is no 'code' query parameter, exit the server function
+  if(is.null(opts$code)) return()
+
+  ## Authenticate === === === === === === === === === === === === === === ===
+  # These parameters are specified before the UI ^
+  token <- get_azure_token(resource, tenant, app,
+                           auth_type = "authorization_code",
+                           authorize_args = list(redirect_uri = redirect),
+                           version = 2,
+                           use_cache = FALSE,
+                           auth_code = opts$code,
+                           password = secret)
+
+  ## Get user === === === === === === === === === === === === === === === ===
+  user <- ms_graph$
+    new(token = token)$
+    get_user()
+
+  ## Get teams === === === === === === === === === === === === === === ===
+  teams <- user$list_teams()
+
+  output$debug <- renderPrint({
+    map_chr(teams, list("properties", "displayName")) |>
+      print()
+  })
 
 output$debug <- renderPrint({print(with_addresses)})
 
