@@ -13,6 +13,9 @@ library(readr)
 library(fs)
 library(plotly)
 library(elementalist)
+library(Microsoft365R)
+library(AzureAuth)
+library(AzureGraph)
 
 
 placeholder_plot <-
@@ -134,6 +137,14 @@ mailchimp <-
 ### Meltwater data -------------------------------------------------------------
 
 meltwater <- readr::read_csv("app-inputs/meltwater-data.csv")
+
+### Parameters for Teams integration ----------------------
+
+app      <- "cf81189c-b1be-492e-929e-6e47c3706346"
+tenant   <- "ChurchArmy787"
+redirect <- "https://church-army.shinyapps.io/FCtest"
+resource <- c("https://graph.microsoft.com/.default", "openid")
+secret <- readLines("app-secrets/microsoft-app-secret")
 
 
 #-------------------------------------------------------------------------------
