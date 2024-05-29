@@ -9,6 +9,10 @@ library(tidyverse)
 library(openssl)
 library(PostcodesioR)
 library(sf)
+library(readr)
+library(fs)
+library(plotly)
+library(elementalist)
 
 
 placeholder_plot <-
@@ -40,13 +44,20 @@ get_region <- function(x){
   reg
 }
 
+line_breaks <- function(x, n){
+
+
+
+
+}
+
 ## ggplot theme defaults -------------------------------------------------------
 
 
 theme_set(
   theme_minimal(base_size = 18) +
-    theme(text = element_text(family = "Trebuchet MS"))
-  )
+    theme(text = element_text(family = "Trebuchet MS")))
+
 
 decrypt_data <- function(path, key_path = "app-secrets/rsa-key.RDS", ...){
 
@@ -122,9 +133,8 @@ mailchimp <-
   )
 ### Meltwater data -------------------------------------------------------------
 
-#meltwater <- vroom("app-inputs/meltwater_data.csv")
+meltwater <- readr::read_csv("app-inputs/meltwater-data.csv")
 
-##this doesn't work
 
 #-------------------------------------------------------------------------------
 
@@ -133,53 +143,60 @@ ui <- fluidPage(
 tabsetPanel(
 
     tabPanel("Home page",
-             div(style = c("font-size:30px; text-align:center; font-family:Trebuchet MS"),
 
-                 p("In March, we recieved"),
+             br(),
+             br(),
+             br(),
+             h1("Hello Fundraising and Comms!", style = "text-align:center; font-family:Trebuchet MS; font-size:60px"),
+             br(),
+             br(),
+             br(),
+             br(),
+             br(),
+             br(),
+             br(),
+             br(),
+             br(),
 
-                 p(textOutput("received_this_month", inline = TRUE),
-                   div(" from", style = "color:black"),
-                   style = "color:#E84619"),
+             fluidRow(
+               column(width = 6,
+                      div(style = "font-size:30px; text-align:center; font-family:Trebuchet MS",
+                          p("In March, we recieved"),
+                            p(textOutput("received_this_month", inline = TRUE),
+                              div(" from", style = "color:black"),
+                              style = "color:#E84619"),
+                            p(textOutput("donors_this_month", inline = TRUE),
+                              style = "color:#E84619"),
+                            p(" individual donors."))),
 
-                 p(textOutput("donors_this_month", inline = TRUE),
-                   style = "color:#E84619"),
-
-                 p(" individual donors.")),
-
-             plotOutput("income_sources_plot"),
-
-             verbatimTextOutput("debug")
-
-    ),
-
-
+               column(width = 6, plotOutput("income_sources_plot")))),
 
     tabPanel("Individual donor stats",
 
 
              sidebarLayout(
                sidebarPanel(
-                 checkboxGroupInput("donation_form", "Form of donation",
+                 fluidRow(column(width = 6, checkboxGroupInput("donation_form", "Form of donation",
                              choices = c("Standing Order", "Direct Debit", "Personal Cheque",
                                          "Voucher", "Cash", "Credit Card", "Business Cheque",
                                          "Other", "PayPal"),
                              selected = c("Standing Order", "Direct Debit", "Personal Cheque",
                                           "Voucher", "Cash", "Credit Card", "Business Cheque",
-                                          "Other", "PayPal")),
+                                          "Other", "PayPal"))),
 
-                 checkboxGroupInput("donation_reservation", "Reserved for:",
+                          column(width = 6, checkboxGroupInput("donation_reservation", "Reserved for:",
                              choices = c("General unrestricted", "Centres of Mission",
                                          "Marylebone", "Amber", "Ruby", "Personal support",
                                          "MYCN"),
                              selected = c("General unrestricted", "Centres of Mission",
                                          "Marylebone", "Amber", "Ruby", "Personal support",
-                                         "MYCN")
-                             ),
-                 dateRangeInput("individual_donation_dates",
-                           "Donate between",
+                                         "MYCN"))
+                             )),
+                 fluidRow(dateRangeInput("individual_donation_dates",
+                           "Donated between",
                            start = ymd("2024-04-04") - 60,
-                           end = ymd("2024-04-04"))
-               ),
+                           end = ymd("2024-04-04"))),
+               width = 3),
                mainPanel(
 
                  plotOutput("forms_times_donation_plot"),
@@ -189,15 +206,18 @@ tabsetPanel(
              )),
 
     tabPanel("Organisation donor stats",
-
-             plotOutput("organisation_donor_plot")
-             ),
+             fluidRow(column(width = 6, plotOutput("parish_donor_plot")),
+                     column(width = 6, plotOutput("trust_donor_plot"))),
+             br(),
+             fluidRow(plotOutput("trust_and_stat_plot"))),
 
     tabPanel("Online engagement",
-             plotOutput("online_engagement_plot"),
-             plotOutput("mailchimp_weekday_plot"),
-             plotOutput("socials_engagement_plot")
-    )))
+             fluidRow(column(width = 6, plotOutput("online_engagement_plot")),
+                      column(width = 6, plotOutput("mailchimp_weekday_plot"))),
+             br(),
+             fluidRow(plotlyOutput("socials_engagement_plot"))
+
+             )))
 
 
 server <- function(input, output){
@@ -214,6 +234,8 @@ month_start <- make_date(max_year, max_month)
 
 month_end <- month_start + period(1, "months") - period(1, "days")
 
+
+## Home Page--------------------------------------------------------------------
 
 output$income_sources_plot <- renderPlot({
 
@@ -238,9 +260,10 @@ output$income_sources_plot <- renderPlot({
     ) +
     theme(
       axis.text = element_blank(),
-      axis.title = element_blank()
+      axis.title = element_blank(),
+      plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))
     ) +
-
+  ggtitle("Sources of income in the last 10 years") +
   ca_scale_fill_discrete(name = "Constituency Code")
 
 })
@@ -301,10 +324,11 @@ output$income_sources_plot <- renderPlot({
              aes(x = gift_date, y = cumulative_gift_gbp)) +
         geom_line(colour = ca_purple(),
                   linewidth = 1.5) +
+        theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
       labs(x = "Gift Date",
            y = "Cumulative gift amounts",
            title = "Cumulative giving from individual donors") +
-        ylim(0, 40000) +  ##take another look!
+        scale_y_continuous(labels = label_comma()) +
         theme(text = element_text(family = "Trebuchet MS"))
 
   })
@@ -318,7 +342,8 @@ output$income_sources_plot <- renderPlot({
 
     if(!postcodes_on_file) previous_postcodes <- tibble(postcode = character(), region = character())
     else previous_postcodes <- vroom("app-inputs/previous-postcodes.csv",
-                                     col_types = "cc")
+                                     col_types = "cc",
+                                     altrep = FALSE)
 
     with_addresses_filtered <-
       filter(with_addresses,
@@ -384,14 +409,87 @@ output$income_sources_plot <- renderPlot({
 
   #### Organisation donors -----------------------------------------------------
 
-  output$organisation_donor_plot <- renderPlot({
-    ggplot(query_1, aes(x = ))
+  output$parish_donor_plot <- renderPlot({
 
+    just_parish <- query_1 %>%
+      filter(constituency_code == "Parish")
 
-    placeholder_plot +
-      ggtitle("Organisation donations")
+    just_parish <- summarise(just_parish, gift_amount_gbp = sum(gift_amount_gbp), .by = month)
+
+    ggplot(just_parish, aes(x = month,
+                            y = gift_amount_gbp)) +
+      geom_line(colour = ca_green(),
+                linewidth = 1.5) +
+      theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
+
+      labs( x = "Time",
+            y = "Gift amount",
+            title = "Parish giving over time") +
+      scale_y_continuous(labels = label_comma())
 
   })
+
+
+  output$trust_donor_plot <- renderPlot({
+
+    just_trust <- query_1 |>
+      filter(constituency_code == "Trust")
+
+    just_trust <- summarise(just_trust, gift_amount_gbp = sum(gift_amount_gbp), .by = month)
+
+
+
+
+    ggplot(just_trust, aes(x = month,
+                           y = gift_amount_gbp)) +
+      geom_line(colour = ca_dark_teal(),
+                linewidth = 1.5) +
+      theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
+
+      labs( x = "Time",
+            y = "Gift amount",
+            title = "Trust giving over time") +
+    scale_y_continuous(labels = label_comma(), limits = c(0, NA))
+
+
+  })
+
+
+
+  output$trust_and_stat_plot <- renderPlot({
+
+    trust_and_stat <- query_1 |>
+      filter(constituency_code == "Trust" | constituency_code == "Parish")
+
+    trust_and_stat <- summarise(trust_and_stat, gift_amount_gbp = sum(gift_amount_gbp), .by = month)
+
+    ggplot(trust_and_stat, aes(x = month,
+                        y = gift_amount_gbp)) +
+
+      geom_hline(yintercept = 160433,
+                 colour = ca_gold(),
+                 linewidth = 1.3,
+                 linetype = "dashed") +
+
+      geom_line(colour = ca_maroon(),
+                linewidth = 1.5) +
+
+      theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
+
+      labs( x = "Time",
+            y = "Gift amount",
+            title = "Amount raised through trusts and stats vs target") +
+      scale_y_continuous(labels = label_comma(), limits = c(0, NA))
+
+
+
+
+
+
+
+  })
+
+
   #### Online engagement -------------------------------------------------------
 
   output$online_engagement_plot <- renderPlot({
@@ -416,6 +514,8 @@ output$income_sources_plot <- renderPlot({
       ggtitle("Click Rate Over Time") +
 
       xlab("Time") +
+
+      theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
 
       scale_y_continuous(name = "Click rate", labels = percent_format()) +
 
@@ -457,6 +557,8 @@ output$income_sources_plot <- renderPlot({
 
       scale_y_continuous(labels = percent_format()) +
 
+      theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
+
       labs(
         x = "Weekday",
         y = "Click rate",
@@ -466,24 +568,54 @@ output$income_sources_plot <- renderPlot({
   })
 
 
-  output$socials_engagement_plot <- renderPlot({
+  output$socials_engagement_plot <- renderPlotly({
+
+    get_tweet <- function(x){
+      str_extract(x, "(?<=\'textSubtitle\'\\: \").+(?=\")") |>
+        str_remove_all("[^[:alnum:][:punct:] ]") |>
+        str_sub(1,50) |>
+        str_c("...") |>
+        strwrap(width = 20) |>
+        str_c(collapse = "\n")
+    }
+
+    meltwater <-
+      rowwise(meltwater) |>
+      mutate(tweet_body = get_tweet(`social text`)) |>
+      ungroup()
 
 
-    ggplot(meltwater_data, aes(x = `created time`,
+    melt_plot <-
+      meltwater |>
+      mutate(source = str_to_title(source),
+             source =
+               case_match(
+                 source,
+                 "Youtube" ~ "YouTube",
+                 .default = source
+               )) |>
+      ggplot(aes(x = `created time`,
                            y = reactions,
                            group = source,
-                           colour = source)) +
+                           colour = source,
+                           text = tweet_body)) +
 
   geom_line(size = 1.5) +
 
   geom_point(size = 3) +
 
+      theme_minimal() +
+
+      theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
+
   labs(x = "Time of post",
        y = "Engagement",
        title = "Engagement in social media posts") +
 
-  ca_scale_fill_discrete(name = "Media") +
-  ca_scale_colour_discrete(name = "Media") })
+  ca_scale_colour_discrete(name = "Media")
+
+    ggplotly(melt_plot, tooltip = "text")
+    })
 
    }
 
