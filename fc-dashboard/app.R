@@ -149,6 +149,25 @@ secret <- readLines("app-secrets/microsoft-app-secret")
 
 #-------------------------------------------------------------------------------
 
+## UI function returns the normal UI if the initial request to the Azure App
+## is succesful
+ui_function <- function(request){
+
+  opts <- parseQueryString(req$QUERY_STRING)
+
+  if(is.null(opts$code))
+  {
+    auth_uri <- build_authorization_uri(resource, tenant, app,
+                                        redirect_uri = redirect, version = 2)
+
+    redir_js <- sprintf("location.replace(\"%s\");", auth_uri)
+    tags$script(HTML(redir_js))
+  }
+
+  else ui
+
+}
+
 ui <- fluidPage(
 
 tabsetPanel(
@@ -631,4 +650,4 @@ output$income_sources_plot <- renderPlot({
    }
 
 # Run the application
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui_function, server = server)
