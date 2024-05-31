@@ -16,7 +16,8 @@ library(elementalist)
 
 
 placeholder_plot <-
-  ggplot(penguins, aes(x = bill_depth_mm, y = bill_length_mm,
+  ggplot(penguins, aes(x = bill_depth_mm,
+                       y = bill_length_mm,
                        colour = species)) +
   geom_point() +
   theme_ca("black")
@@ -97,11 +98,11 @@ individual <- filter(query_1, constituency_code == "Individual")
 
 
 with_addresses <-
-  vroom("app-inputs/with-postcodes.CSV",
+  read_csv("app-inputs/with-postcodes.CSV",
                         col_types = "icfccfc") |>
   clean_names() |>
   mutate(
-    across(c(gift_date, birth_date),
+    across(gift_date,
     \(x){
       as.numeric(x) |>
         as.Date(origin = "1899-12-30")
