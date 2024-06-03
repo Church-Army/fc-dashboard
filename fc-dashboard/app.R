@@ -54,74 +54,13 @@ theme_set(
   theme_minimal(base_size = 18) +
     theme(text = element_text(family = "Trebuchet MS")))
 
-
-decrypt_data <- function(path, key_path = "app-secrets/rsa-key.RDS", ...){
-
-  envelope <- readRDS(path)
-  key <- readRDS(key_path)
-
-  data <- decrypt_envelope(envelope$data, envelope$iv, envelope$session, key = key)
-
-  data |>
-    rawToChar() |>
-    I() |>
-    vroom(...)
-}
-
 ## Read in Data ----------------------------------------------------------------
 
 ### Raiser's edge data ---------------------------------------------------------
 
-query_1 <-
-  vroom("app-inputs/query-1.CSV", col_types = "dcficccff") |>
-  mutate(
-    gift_date = dmy(gift_date),
-    week  = round_date(gift_date, "week"),
-    month = round_date(gift_date, "month")
-    )
-
-donor_id <- str_c("d_", 1:(round(nrow(query_1)/3)))
-query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
-
-
-individual <- filter(query_1, constituency_code == "Individual")
-
-
-with_addresses <-
-  vroom("app-inputs/with-postcodes.CSV",
-                        col_types = "icfccfc") |>
-  clean_names() |>
-  mutate(
-    across(c(gift_date, birth_date),
-    \(x){
-      as.numeric(x) |>
-        as.Date(origin = "1899-12-30")
-    }))
 
 ### Mailchimp data -------------------------------------------------------------
 
-mailchimp <-
-  vroom("app-inputs/mailchimp.csv") |>
-  clean_names() |>
-  mutate(month = round_date(email_sent_time, "month"),
-         week  = round_date(email_sent_time, "week"),
-         weekday = wday(email_sent_time, label = TRUE))
-
-mailchimp <-
-  mutate(
-    mailchimp,
-
-    email_type =
-      case_when(
-        str_detect(email_name, "CAConnected") ~ "Connected",
-        str_detect(email_name, "Prayer Points") ~ "Prayer",
-        str_detect(email_name, "Inside Out") ~ "Inside Out",
-        str_detect(email_name, "Appeal") ~ "Appeals",
-        str_detect(email_name, "Supporter News") ~ "Supporter news",
-        .default = "Other") |>
-      ordered() |>
-      fct_relevel("Other", after = Inf)
-  )
 ### Meltwater data -------------------------------------------------------------
 
 meltwater <- readr::read_csv("app-inputs/meltwater-data.csv")
@@ -187,7 +126,9 @@ tabsetPanel(
                               style = "color:#E84619"),
                             p(" individual donors."))),
 
-               column(width = 6, plotOutput("income_sources_plot")))),
+               column(width = 6, plotOutput("income_sources_plot"))),
+
+             fluidRow(verbatimTextOutput("debug"))),
 
     tabPanel("Individual donor stats",
 
@@ -248,7 +189,7 @@ server <- function(input, output, session){
   # If there is no 'code' query parameter, exit the server function
   if(is.null(opts$code)) return()
 
-  ## Authenticate === === === === === === === === === === === === === === ===
+  ## Authenticate  === === === === === === === === === === === === === === ===
   # These parameters are specified before the UI ^
   token <- get_azure_token(resource, tenant, app,
                            auth_type = "authorization_code",
@@ -258,20 +199,78 @@ server <- function(input, output, session){
                            auth_code = opts$code,
                            password = secret)
 
-  ## Get user === === === === === === === === === === === === === === === ===
-  user <- ms_graph$
-    new(token = token)$
-    get_user()
+  ## New Login === === === === === === === === === === === === === === === ===
 
-  ## Get teams === === === === === === === === === === === === === === ===
-  teams <- user$list_teams()
+  token <-
+    ms_graph$
+    new(token = token)
 
-  output$debug <- renderPrint({
-    map_chr(teams, list("properties", "displayName")) |>
-      print()
-  })
+  ## Get teams files   === === === === === === === === === === === === === ===
+  teams_files <-
+    token$
+    get_drive(drive_id = "b!FBa-5Y9Qw0iz5k2Naz0eVg8dJm_6qmdFqIQgce_w0yO1bfQBIQ5UQ53Df-ootpzr")$
+    get_item("Project - Internal - Fundraising reporting/files-for-app")
 
-output$debug <- renderPrint({print(with_addresses)})
+  ## Read inputs and save locally === === === === === === === === === === ===
+  teams_inputs <- dir_create("teams-inputs")
+
+  read_teams <- function(x, ..., files = teams_files){
+
+    files$
+      get_item(x)$
+      download(path(teams_inputs, x))
+
+    read_csv(path(teams_inputs, x), ...)
+  }
+
+  ### Read query-1 -------------------------------------------------------------
+  query_1 <- read_teams("query-1.CSV", col_types = "dcficccff") |>
+    mutate(
+      gift_date = dmy(gift_date),
+      week  = round_date(gift_date, "week"),
+      month = round_date(gift_date, "month")
+    )
+
+  donor_id <- str_c("d_", 1:(round(nrow(query_1)/3)))
+  query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
+
+  individual <- filter(query_1, constituency_code == "Individual")
+
+  ### Read with-addresses ------------------------------------------------------
+  with_addresses <-
+    read_teams("with-postcodes.CSV", col_types = "icfccfc") |>
+    clean_names() |>
+    mutate(
+      across(c(gift_date, birth_date),
+             \(x){
+               as.numeric(x) |>
+                 as.Date(origin = "1899-12-30")
+             }))
+
+  ### Read mailchimp  ----------------------------------------------------------
+  mailchimp <- read_teams("mailchimp.csv") |>
+    clean_names() |>
+    mutate(month = round_date(email_sent_time, "month"),
+           week  = round_date(email_sent_time, "week"),
+           weekday = wday(email_sent_time, label = TRUE))
+
+  mailchimp <-
+    mutate(
+      mailchimp,
+      email_type =
+        case_when(
+          str_detect(email_name, "CAConnected") ~ "Connected",
+          str_detect(email_name, "Prayer Points") ~ "Prayer",
+          str_detect(email_name, "Inside Out") ~ "Inside Out",
+          str_detect(email_name, "Appeal") ~ "Appeals",
+          str_detect(email_name, "Supporter News") ~ "Supporter news",
+          .default = "Other") |>
+        ordered() |>
+        fct_relevel("Other", after = Inf)
+    )
+
+
+output$debug <- renderPrint({print(teams_files$list_files())})
 
 max_date <- max(individual$gift_date)
 
