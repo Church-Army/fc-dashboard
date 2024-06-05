@@ -13,9 +13,20 @@ library(readr)
 library(fs)
 library(plotly)
 library(elementalist)
+<<<<<<< HEAD
 library(Microsoft365R)
 library(AzureAuth)
 library(AzureGraph)
+=======
+
+
+placeholder_plot <-
+  ggplot(penguins, aes(x = bill_depth_mm,
+                       y = bill_length_mm,
+                       colour = species)) +
+  geom_point() +
+  theme_ca("black")
+>>>>>>> 358cdf214bde51efbdd80da30e324be48298a2cd
 
 #------------------------------------------------------------------------------
 
@@ -58,6 +69,39 @@ theme_set(
 
 ### Raiser's edge data ---------------------------------------------------------
 
+<<<<<<< HEAD
+=======
+query_1 <-
+  decrypt_data("app-inputs/raisers-edge-query_1_encrypted-csv.RDS",
+               col_types = "dcficccff") |>
+  mutate(
+    gift_date = dmy(gift_date),
+    week  = round_date(gift_date, "week"),
+    month = round_date(gift_date, "month")
+    )
+
+query_2 <- decrypt_data("app-inputs/raisers-edge-query_2_encrypted-csv.RDS",
+                        col_types = "dcficccff")
+
+
+donor_id <- str_c("d_", 1:(round(nrow(query_1)/3)))
+query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
+
+
+individual <- filter(query_1, constituency_code == "Individual")
+
+
+with_addresses <-
+  read_csv("app-inputs/with-postcodes.CSV",
+                        col_types = "icfccfc") |>
+  clean_names() |>
+  mutate(
+    across(gift_date,
+    \(x){
+      as.numeric(x) |>
+        as.Date(origin = "1899-12-30")
+    }))
+>>>>>>> 358cdf214bde51efbdd80da30e324be48298a2cd
 
 ### Mailchimp data -------------------------------------------------------------
 
