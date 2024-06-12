@@ -11,3 +11,4 @@ fc-dashboard/app-secrets/**
 **.csv
 
 **.geojson
+**.dcf
