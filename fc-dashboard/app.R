@@ -1,6 +1,5 @@
 library(shiny)
 library(scales)
-library(palmerpenguins)
 library(carutools)
 library(vroom)
 library(lubridate)
@@ -14,13 +13,6 @@ library(fs)
 library(plotly)
 library(elementalist)
 
-
-placeholder_plot <-
-  ggplot(penguins, aes(x = bill_depth_mm,
-                       y = bill_length_mm,
-                       colour = species)) +
-  geom_point() +
-  theme_ca("black")
 
 #------------------------------------------------------------------------------
 
@@ -46,8 +38,6 @@ get_region <- function(x){
 }
 
 line_breaks <- function(x, n){
-
-
 
 
 }
@@ -162,7 +152,9 @@ tabsetPanel(
              fluidRow(
                column(width = 6,
                       div(style = "font-size:30px; text-align:center; font-family:Trebuchet MS",
-                          p("In March, we recieved"),
+                            p("In"),
+                            p(textOutput("month_in_question", inline = TRUE)),
+                            p("we recieved"),
                             p(textOutput("received_this_month", inline = TRUE),
                               div(" from", style = "color:black"),
                               style = "color:#E84619"),
