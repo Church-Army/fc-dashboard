@@ -71,17 +71,11 @@ query_1 <-
     week  = round_date(gift_date, "week"),
     month = round_date(gift_date, "month")
     )
-
-donor_id <- str_c("d_", 1:(round(nrow(query_1)/3)))
-query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
-
-
 individual <- filter(query_1, constituency_code == "Individual")
 
 
 with_addresses <-
-  read_csv("app-inputs/with-postcodes.CSV",
-                        col_types = "icfccfc") |>
+  read_csv("app-inputs/with-postcodes.CSV") |>
   clean_names() |>
   mutate(
     across(gift_date,
@@ -270,7 +264,7 @@ output$income_sources_plot <- renderPlot({
 
     month_in_question <- filter(individual, gift_date >= month_start, gift_date <= month_end)
 
-    unique_donors <- n_distinct(month_in_question$donor_id)
+    unique_donors <- n_distinct(month_in_question$constituent_id)
 
     label_comma()(unique_donors)
 
