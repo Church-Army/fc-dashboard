@@ -49,47 +49,23 @@ theme_set(
   theme_minimal(base_size = 18) +
     theme(text = element_text(family = "Trebuchet MS")))
 
-
-decrypt_data <- function(path, key_path = "app-secrets/rsa-key.RDS", ...){
-
-  envelope <- readRDS(path)
-  key <- readRDS(key_path)
-
-  data <- decrypt_envelope(envelope$data, envelope$iv, envelope$session, key = key)
-
-  data |>
-    rawToChar() |>
-    I() |>
-    vroom(...)
-}
-
 ## Read in Data ----------------------------------------------------------------
 
 ### Raiser's edge data ---------------------------------------------------------
 
 query_1 <-
-  decrypt_data("app-inputs/raisers-edge-query_1_encrypted-csv.RDS",
-               col_types = "dcficccff") |>
+  read_csv("app-inputs/raisers-edge-query_1.csv",
+           col_types = "dcficccff") |>
   mutate(
     gift_date = dmy(gift_date),
     week  = round_date(gift_date, "week"),
     month = round_date(gift_date, "month")
     )
-
-query_2 <- decrypt_data("app-inputs/raisers-edge-query_2_encrypted-csv.RDS",
-                        col_types = "dcficccff")
-
-
-donor_id <- str_c("d_", 1:(round(nrow(query_1)/3)))
-query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
-
-
 individual <- filter(query_1, constituency_code == "Individual")
 
 
 with_addresses <-
-  read_csv("app-inputs/with-postcodes.CSV",
-                        col_types = "icfccfc") |>
+  read_csv("app-inputs/with-postcodes.CSV") |>
   clean_names() |>
   mutate(
     across(gift_date,
@@ -280,7 +256,7 @@ output$income_sources_plot <- renderPlot({
 
     month_in_question <- filter(individual, gift_date >= month_start, gift_date <= month_end)
 
-    unique_donors <- n_distinct(month_in_question$donor_id)
+    unique_donors <- n_distinct(month_in_question$constituent_id)
 
     label_comma()(unique_donors)
 
