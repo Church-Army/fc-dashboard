@@ -54,25 +54,19 @@ theme_set(
 ### Raiser's edge data ---------------------------------------------------------
 
 query_1 <-
-  read_csv("app-inputs/raisers-edge-query_1.csv",
-           col_types = "dcficccff") |>
+  read_csv("app-inputs/with-postcodes.CSV", col_types = "ccccccccccc") |>
+  clean_names() |>
+  mutate(gift_amount = parse_number(gift_amount),
+         gift_date = dmy(gift_date)) |>
   mutate(
-    gift_date = dmy(gift_date),
     week  = round_date(gift_date, "week"),
     month = round_date(gift_date, "month")
     )
+
+query_1 <- distinct(query_1)
+
 individual <- filter(query_1, constituency_code == "Individual")
 
-
-with_addresses <-
-  read_csv("app-inputs/with-postcodes.CSV") |>
-  clean_names() |>
-  mutate(
-    across(gift_date,
-    \(x){
-      as.numeric(x) |>
-        as.Date(origin = "1899-12-30")
-    }))
 
 ### Mailchimp data -------------------------------------------------------------
 
@@ -102,7 +96,7 @@ mailchimp <-
 
 meltwater <- readr::read_csv("app-inputs/meltwater-data.csv")
 
-
+orange <- function(...) span(..., style = "color:#E84619")
 #-------------------------------------------------------------------------------
 
 ui <- fluidPage(
@@ -128,15 +122,12 @@ tabsetPanel(
              fluidRow(
                column(width = 6,
                       div(style = "font-size:30px; text-align:center; font-family:Trebuchet MS",
-                            p("In"),
-                            p(textOutput("month_in_question", inline = TRUE)),
-                            p("we recieved"),
-                            p(textOutput("received_this_month", inline = TRUE),
-                              div(" from", style = "color:black"),
-                              style = "color:#E84619"),
-                            p(textOutput("donors_this_month", inline = TRUE),
-                              style = "color:#E84619"),
-                            p(" individual donors."))),
+                            p("In", textOutput("month_label", inline = TRUE), "we received"),
+                            p(orange(textOutput("received_this_month", inline = TRUE)),
+                              "from"),
+                            p(orange(
+                              textOutput("donors_this_month", inline = TRUE)),
+                            " individual donors."))),
 
                column(width = 6, plotOutput("income_sources_plot")))),
 
@@ -191,9 +182,11 @@ tabsetPanel(
 
 server <- function(input, output){
 
-output$debug <- renderPrint({print(with_addresses)})
+output$debug <- renderPrint({print(query_1)})
 
 max_date <- max(individual$gift_date)
+
+max_date <- max_date - period(1, "months")
 
 max_month <- month(max_date)
 
@@ -203,14 +196,17 @@ month_start <- make_date(max_year, max_month)
 
 month_end <- month_start + period(1, "months") - period(1, "days")
 
+output$month_label <- renderText({month.name[max_month]})
+
 
 ## Home Page--------------------------------------------------------------------
 
 output$income_sources_plot <- renderPlot({
 
-  summarise(query_1, gift_amount = sum(gift_amount_gbp), .by = constituency_code) |>
+  summarise(query_1, gift_amount = sum(gift_amount), .by = constituency_code) |>
 
-    mutate(gift_amount_label = label_dollar(prefix = "£")(gift_amount),
+    mutate(gift_amount_relative = gift_amount/sum(gift_amount),
+           gift_amount_label = if_else(gift_amount_relative > 0.05, label_dollar(prefix = "£")(gift_amount), ""),
            constituency_code = fct_reorder(constituency_code, gift_amount)) |>
     arrange(-gift_amount) |>
 
@@ -221,6 +217,8 @@ output$income_sources_plot <- renderPlot({
               position = position_stack(0.5),
               angle = 90,
               size = 6) +
+
+
 
     coord_radial(
       theta = "y",
@@ -243,7 +241,9 @@ output$income_sources_plot <- renderPlot({
 
   month_in_question <- filter(individual, gift_date >= month_start, gift_date <= month_end)
 
-     label_dollar(prefix = "£")(sum(month_in_question$gift_amount_gbp))
+  sum(month_in_question$gift_amount) |>
+    round() |>
+    label_dollar(prefix = "£")()
 
      })
 
@@ -287,7 +287,7 @@ output$income_sources_plot <- renderPlot({
       ) |>
 
       arrange(gift_date) |>
-      mutate(cumulative_gift_gbp = cumsum(gift_amount_gbp))
+      mutate(cumulative_gift_gbp = cumsum(gift_amount))
 
       ggplot(processed,
              aes(x = gift_date, y = cumulative_gift_gbp)) +
@@ -314,8 +314,8 @@ output$income_sources_plot <- renderPlot({
                                      col_types = "cc",
                                      altrep = FALSE)
 
-    with_addresses_filtered <-
-      filter(with_addresses,
+    query_1_filtered <-
+      filter(query_1,
              gift_date > input$individual_donation_dates[1],
              gift_date < input$individual_donation_dates[2],
              gift_payment_type %in% input$donation_form
@@ -324,7 +324,7 @@ output$income_sources_plot <- renderPlot({
                str_remove_all(preferred_postcode, " ") |>
                str_squish())
 
-    clean_postcodes <- unique(with_addresses_filtered$clean_postcode)
+    clean_postcodes <- unique(query_1_filtered$clean_postcode)
 
     unprocessed <- !clean_postcodes %in% previous_postcodes$postcode
 
@@ -345,12 +345,12 @@ output$income_sources_plot <- renderPlot({
 
    vroom_write(postcodes, "app-inputs/previous-postcodes.csv", delim = ",")
 
-   with_addresses_filtered <- left_join(with_addresses_filtered, postcodes, by = c(clean_postcode = "postcode"))
+   query_1_filtered <- left_join(query_1_filtered, postcodes, by = c(clean_postcode = "postcode"))
 
    region_shapes <- read_sf("app-inputs/gb-regions.geojson")
 
    region_gifts <-
-     group_by(with_addresses_filtered, region) |>
+     group_by(query_1_filtered, region) |>
      count()
 
    region_shapes <-
@@ -383,10 +383,10 @@ output$income_sources_plot <- renderPlot({
     just_parish <- query_1 %>%
       filter(constituency_code == "Parish")
 
-    just_parish <- summarise(just_parish, gift_amount_gbp = sum(gift_amount_gbp), .by = month)
+    just_parish <- summarise(just_parish, gift_amount = sum(gift_amount), .by = month)
 
     ggplot(just_parish, aes(x = month,
-                            y = gift_amount_gbp)) +
+                            y = gift_amount)) +
       geom_line(colour = ca_green(),
                 linewidth = 1.5) +
       theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
@@ -404,13 +404,13 @@ output$income_sources_plot <- renderPlot({
     just_trust <- query_1 |>
       filter(constituency_code == "Trust")
 
-    just_trust <- summarise(just_trust, gift_amount_gbp = sum(gift_amount_gbp), .by = month)
+    just_trust <- summarise(just_trust, gift_amount = sum(gift_amount), .by = month)
 
 
 
 
     ggplot(just_trust, aes(x = month,
-                           y = gift_amount_gbp)) +
+                           y = gift_amount)) +
       geom_line(colour = ca_dark_teal(),
                 linewidth = 1.5) +
       theme(plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))) +
@@ -430,10 +430,10 @@ output$income_sources_plot <- renderPlot({
     trust_and_stat <- query_1 |>
       filter(constituency_code == "Trust" | constituency_code == "Parish")
 
-    trust_and_stat <- summarise(trust_and_stat, gift_amount_gbp = sum(gift_amount_gbp), .by = month)
+    trust_and_stat <- summarise(trust_and_stat, gift_amount = sum(gift_amount), .by = month)
 
     ggplot(trust_and_stat, aes(x = month,
-                        y = gift_amount_gbp)) +
+                        y = gift_amount)) +
 
       geom_hline(yintercept = 160433,
                  colour = ca_gold(),
