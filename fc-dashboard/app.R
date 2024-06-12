@@ -59,36 +59,18 @@ theme_set(
   theme_minimal(base_size = 18) +
     theme(text = element_text(family = "Trebuchet MS")))
 
-
-decrypt_data <- function(path, key_path = "app-secrets/rsa-key.RDS", ...){
-
-  envelope <- readRDS(path)
-  key <- readRDS(key_path)
-
-  data <- decrypt_envelope(envelope$data, envelope$iv, envelope$session, key = key)
-
-  data |>
-    rawToChar() |>
-    I() |>
-    vroom(...)
-}
-
 ## Read in Data ----------------------------------------------------------------
 
 ### Raiser's edge data ---------------------------------------------------------
 
 query_1 <-
-  decrypt_data("app-inputs/raisers-edge-query_1_encrypted-csv.RDS",
-               col_types = "dcficccff") |>
+  read_csv("app-inputs/raisers-edge-query_1.csv",
+           col_types = "dcficccff") |>
   mutate(
     gift_date = dmy(gift_date),
     week  = round_date(gift_date, "week"),
     month = round_date(gift_date, "month")
     )
-
-query_2 <- decrypt_data("app-inputs/raisers-edge-query_2_encrypted-csv.RDS",
-                        col_types = "dcficccff")
-
 
 donor_id <- str_c("d_", 1:(round(nrow(query_1)/3)))
 query_1$donor_id <- sample(donor_id, nrow(query_1), replace = TRUE)
