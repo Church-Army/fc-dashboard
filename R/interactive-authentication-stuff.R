@@ -19,11 +19,11 @@ me <- gr$get_user(email = "david.lovell@churcharmy.org")
 head(me$list_group_memberships())
 me$list_sharepoint_sites()
 
-ru <- gr$get_sharepoint_site("https://churcharmy787.sharepoint.com/sites/ResearchUnit")
+ru <- gr$get_sharepoint_site("https://churcharmy787.sharepoint.com/sites/FundraisingAndCommunicationsDashboard")
 
 app_files <-
   ru$
   get_drive()$
-  get_item("Project - Internal - Fundraising reporting/files-for-app")
+  get_item("General/files-for-app")
 
 ru$get_drive(drive_id = "b!FBa-5Y9Qw0iz5k2Naz0eVg8dJm_6qmdFqIQgce_w0yO1bfQBIQ5UQ53Df-ootpzr") -> foo
