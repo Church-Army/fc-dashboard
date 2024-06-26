@@ -202,7 +202,7 @@ server <- function(input, output, session){
 
     files$
       get_item(x)$
-      download(path(teams_inputs, x))
+      download(path(teams_inputs, x), overwrite = TRUE)
 
     read_csv(path(teams_inputs, x), ...)
   }
