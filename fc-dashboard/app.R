@@ -97,8 +97,6 @@ mailchimp <-
       case_when(
         str_detect(email_name, "CAConnected") ~ "Connected",
         str_detect(email_name, "Prayer Points") ~ "Prayer",
-        str_detect(email_name, "Inside Out") ~ "Inside Out",
-        str_detect(email_name, "Appeal") ~ "Appeals",
         str_detect(email_name, "Supporter News") ~ "Supporter news",
         .default = "Other") |>
       ordered() |>
@@ -490,7 +488,7 @@ output$income_sources_plot <- renderPlot({
 
       scale_y_continuous(name = "Click rate", labels = percent_format()) +
 
-      ggtitle("Which of our emails have yield the highest click rates?")
+      ggtitle("Which emails meet their click rate target?")
 
   })
 
