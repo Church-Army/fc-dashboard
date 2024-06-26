@@ -309,7 +309,7 @@ output$income_sources_plot <- renderPlot({
       axis.title = element_blank(),
       plot.background  = element_rect_round(fill = "gray96", colour = "gray96", radius = unit(10, "pt"))
     ) +
-  ggtitle("Sources of income in the last 10 years") +
+  ggtitle("Our sources of income over the last 10 years") +
   ca_scale_fill_discrete(name = "Constituency Code")
 
 })
@@ -444,13 +444,13 @@ output$income_sources_plot <- renderPlot({
      labs(
        x = NULL,
        y = NULL,
+       title = "Where are our donors from?",
        caption = "NB this map is does not respond to the 'reserved for' field"
      ) +
      theme(
        axis.text = element_blank(),
        panel.grid = element_blank(),
-       plot.caption = element_text(size = 9)
-     )
+       plot.caption = element_text(size = 9))
 
    })
 
@@ -567,7 +567,7 @@ output$income_sources_plot <- renderPlot({
 
       scale_y_continuous(name = "Click rate", labels = percent_format()) +
 
-      ggtitle("Email click rates")
+      ggtitle("Which of our emails have yield the highest click rates?")
 
   })
 
@@ -610,7 +610,8 @@ output$income_sources_plot <- renderPlot({
       labs(
         x = "Weekday",
         y = "Click rate",
-        title = "Average click rate by email type and weekday-sent"
+        title = "Does the day of the week an email is sent affect the engagement?",
+        subtitle = "Average click rate by email type and weekday-sent"
       )
 
   })
