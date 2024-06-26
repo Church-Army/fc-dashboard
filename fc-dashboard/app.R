@@ -192,8 +192,8 @@ server <- function(input, output, session){
   ## Get teams files   === === === === === === === === === === === === === ===
   teams_files <-
     token$
-    get_drive(drive_id = "b!FBa-5Y9Qw0iz5k2Naz0eVg8dJm_6qmdFqIQgce_w0yO1bfQBIQ5UQ53Df-ootpzr")$
-    get_item("Project - Internal - Fundraising reporting/files-for-app")
+    get_drive(drive_id = "b!4WCLmJ7_-UyvqHz3uE14S-2-qWBOmtZJtta4oBuaQm1dJpBBQY92Q4vJbp10i5Gn")$
+    get_item("General/files-for-app")
 
   ## Read inputs and save locally === === === === === === === === === === ===
   teams_inputs <- dir_create("teams-inputs")
@@ -209,7 +209,7 @@ server <- function(input, output, session){
 
   ### Read query-1 -------------------------------------------------------------
   query_1 <-
-    read_teams("with-postcodes.CSV", col_types = "ccccccccccc") |>
+    read_teams("raisers-edge-data.CSV", col_types = "ccccccccccc") |>
     clean_names() |>
     mutate(gift_amount = parse_number(gift_amount),
            gift_date = dmy(gift_date)) |>
@@ -224,7 +224,7 @@ server <- function(input, output, session){
   individual <- filter(query_1, constituency_code == "Individual")
 
   ### Read mailchimp  ----------------------------------------------------------
-  mailchimp <- read_teams("mailchimp.csv") |>
+  mailchimp <- read_teams("mailchimp-data.csv") |>
     clean_names() |>
     mutate(month = round_date(email_sent_time, "month"),
            week  = round_date(email_sent_time, "week"),
