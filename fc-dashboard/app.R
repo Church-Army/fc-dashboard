@@ -171,7 +171,7 @@ tabsetPanel(
 
                  plotOutput("forms_times_donation_plot"),
 
-                 plotOutput("uk_regions_map")
+                 plotOutput("uk_regions_map", height = "600px")
                  )
              )),
 
