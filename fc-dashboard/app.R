@@ -312,8 +312,6 @@ output$income_sources_plot <- renderPlot({
                                      col_types = "cc",
                                      altrep = FALSE)
 
-    browser()
-
     query_1_filtered <-
       filter(query_1,
              gift_date > input$individual_donation_dates[1],
