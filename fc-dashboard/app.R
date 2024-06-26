@@ -61,6 +61,18 @@ query_1 <-
   mutate(
     week  = round_date(gift_date, "week"),
     month = round_date(gift_date, "month")
+    ) |>
+  mutate(gift_reservation =
+           case_when(
+             fund_description == "General unrestricted"   ~ "General unrestricted",
+             str_detect(fund_description, "^COM ")        ~ "Centres of Mission",
+             str_detect(fund_description, "^Marylebone ") ~ "Marylebone",
+             str_detect(fund_description, "^Amber ")      ~ "Amber",
+             str_detect(fund_description, "^Ruby ")       ~ "Ruby",
+             str_detect(fund_description, "^Pers Supp ")  ~ "Personal support",
+             str_detect(fund_description, "^MYCN ")       ~ "MYCN"
+             ) |>
+           factor()
     )
 
 query_1 <- distinct(query_1)
@@ -267,23 +279,11 @@ output$income_sources_plot <- renderPlot({
   output$forms_times_donation_plot <- renderPlot({
     processed <-
       individual |>
-      mutate(new_fund_description =
-               case_when(
-                 fund_description == "General unrestricted"   ~ "General unrestricted",
-                 str_detect(fund_description, "^COM ")        ~ "Centres of Mission",
-                 str_detect(fund_description, "^Marylebone ") ~ "Marylebone",
-                 str_detect(fund_description, "^Amber ")      ~ "Amber",
-                 str_detect(fund_description, "^Ruby ")       ~ "Ruby",
-                 str_detect(fund_description, "^Pers Supp ")  ~ "Personal support",
-                 str_detect(fund_description, "^MYCN ")       ~ "MYCN"
-                 ) |>
-               factor()
-             ) |>
       filter(
         gift_date > input$individual_donation_dates[1],
         gift_date < input$individual_donation_dates[2],
         gift_payment_type %in% input$donation_form,
-        new_fund_description %in% input$donation_reservation
+        gift_reservation %in% input$donation_reservation
       ) |>
 
       arrange(gift_date) |>
@@ -314,11 +314,14 @@ output$income_sources_plot <- renderPlot({
                                      col_types = "cc",
                                      altrep = FALSE)
 
+    browser()
+
     query_1_filtered <-
       filter(query_1,
              gift_date > input$individual_donation_dates[1],
              gift_date < input$individual_donation_dates[2],
-             gift_payment_type %in% input$donation_form
+             gift_payment_type %in% input$donation_form,
+             gift_reservation %in% input$donation_reservation
              ) |>
       mutate(clean_postcode =
                str_remove_all(preferred_postcode, " ") |>
@@ -361,12 +364,11 @@ output$income_sources_plot <- renderPlot({
 
    ggplot(plot_data) +
      geom_sf(aes(fill = n)) +
-     scale_fill_gradient(low = "white", high = ca_cyan()) +
+     scale_fill_gradient(name = "No. gifts", low = "white", high = ca_cyan()) +
      labs(
        x = NULL,
        y = NULL,
        title = "Where are our donors from?",
-       caption = "NB this map is does not respond to the 'reserved for' field"
      ) +
      theme(
        axis.text = element_blank(),
