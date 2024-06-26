@@ -185,7 +185,10 @@ tabsetPanel(
              fluidRow(column(width = 6, plotOutput("online_engagement_plot")),
                       column(width = 6, plotOutput("mailchimp_weekday_plot"))),
              br(),
-             fluidRow(plotlyOutput("socials_engagement_plot"))
+             fluidRow(plotlyOutput("socials_engagement_plot")),
+             br(),
+             a("Click here to view a live report from Google Analytics",
+               href = "https://lookerstudio.google.com/u/0/reporting/d7c3ec2b-75bd-40c8-a003-e91e2908a3c0/page/1M")
 
              )))
 
