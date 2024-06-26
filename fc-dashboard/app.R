@@ -51,57 +51,11 @@ theme_set(
 
 ### Parameters for Teams integration ----------------------
 
-<<<<<<< HEAD
 app      <- "cf81189c-b1be-492e-929e-6e47c3706346"
 tenant   <- "ChurchArmy787"
 redirect <- "https://church-army.shinyapps.io/FCtest"
 resource <- c("https://graph.microsoft.com/.default", "openid")
 secret <- readLines("app-secrets/microsoft-app-secret")
-=======
-### Raiser's edge data ---------------------------------------------------------
-
-query_1 <-
-  read_csv("app-inputs/raisers-edge-data.CSV", col_types = "ccccccccccc") |>
-  clean_names() |>
-  mutate(gift_amount = parse_number(gift_amount),
-         gift_date = dmy(gift_date)) |>
-  mutate(
-    week  = round_date(gift_date, "week"),
-    month = round_date(gift_date, "month")
-    ) |>
-
-
-query_1 <- distinct(query_1)
-
-individual <- filter(query_1, constituency_code == "Individual")
-
-
-### Mailchimp data -------------------------------------------------------------
-
-mailchimp <-
-  vroom("app-inputs/mailchimp-data.csv") |>
-  clean_names() |>
-  mutate(month = round_date(email_sent_time, "month"),
-         week  = round_date(email_sent_time, "week"),
-         weekday = wday(email_sent_time, label = TRUE))
-
-mailchimp <-
-  mutate(
-    mailchimp,
-
-    email_type =
-      case_when(
-        str_detect(email_name, "CAConnected") ~ "Connected",
-        str_detect(email_name, "Prayer Points") ~ "Prayer",
-        str_detect(email_name, "Supporter News") ~ "Supporter news",
-        .default = "Other") |>
-      ordered() |>
-      fct_relevel("Other", after = Inf)
-  )
-### Meltwater data -------------------------------------------------------------
-
-meltwater <- readr::read_csv("app-inputs/meltwater-data.csv")
->>>>>>> master
 
 orange <- function(...) span(..., style = "color:#E84619")
 #-------------------------------------------------------------------------------
