@@ -582,7 +582,10 @@ output$income_sources_plot <- renderPlot({
 
   ca_scale_colour_discrete(name = "Media")
 
-    ggplotly(melt_plot, tooltip = "text")
+    ggplotly(melt_plot, tooltip = "text") |>
+      layout(font = list(family = "Trebuchet MS",
+                         size = 14,
+                         color = "black"))
     })
 
    }
