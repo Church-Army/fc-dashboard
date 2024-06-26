@@ -51,11 +51,57 @@ theme_set(
 
 ### Parameters for Teams integration ----------------------
 
+<<<<<<< HEAD
 app      <- "cf81189c-b1be-492e-929e-6e47c3706346"
 tenant   <- "ChurchArmy787"
 redirect <- "https://church-army.shinyapps.io/FCtest"
 resource <- c("https://graph.microsoft.com/.default", "openid")
 secret <- readLines("app-secrets/microsoft-app-secret")
+=======
+### Raiser's edge data ---------------------------------------------------------
+
+query_1 <-
+  read_csv("app-inputs/raisers-edge-data.CSV", col_types = "ccccccccccc") |>
+  clean_names() |>
+  mutate(gift_amount = parse_number(gift_amount),
+         gift_date = dmy(gift_date)) |>
+  mutate(
+    week  = round_date(gift_date, "week"),
+    month = round_date(gift_date, "month")
+    ) |>
+
+
+query_1 <- distinct(query_1)
+
+individual <- filter(query_1, constituency_code == "Individual")
+
+
+### Mailchimp data -------------------------------------------------------------
+
+mailchimp <-
+  vroom("app-inputs/mailchimp-data.csv") |>
+  clean_names() |>
+  mutate(month = round_date(email_sent_time, "month"),
+         week  = round_date(email_sent_time, "week"),
+         weekday = wday(email_sent_time, label = TRUE))
+
+mailchimp <-
+  mutate(
+    mailchimp,
+
+    email_type =
+      case_when(
+        str_detect(email_name, "CAConnected") ~ "Connected",
+        str_detect(email_name, "Prayer Points") ~ "Prayer",
+        str_detect(email_name, "Supporter News") ~ "Supporter news",
+        .default = "Other") |>
+      ordered() |>
+      fct_relevel("Other", after = Inf)
+  )
+### Meltwater data -------------------------------------------------------------
+
+meltwater <- readr::read_csv("app-inputs/meltwater-data.csv")
+>>>>>>> master
 
 orange <- function(...) span(..., style = "color:#E84619")
 #-------------------------------------------------------------------------------
@@ -144,7 +190,7 @@ tabsetPanel(
 
                  plotOutput("forms_times_donation_plot"),
 
-                 plotOutput("uk_regions_map")
+                 plotOutput("uk_regions_map", height = "600px")
                  )
              )),
 
@@ -158,7 +204,10 @@ tabsetPanel(
              fluidRow(column(width = 6, plotOutput("online_engagement_plot")),
                       column(width = 6, plotOutput("mailchimp_weekday_plot"))),
              br(),
-             fluidRow(plotlyOutput("socials_engagement_plot"))
+             fluidRow(plotlyOutput("socials_engagement_plot")),
+             br(),
+             a("Click here to view a live report from Google Analytics",
+               href = "https://lookerstudio.google.com/u/0/reporting/d7c3ec2b-75bd-40c8-a003-e91e2908a3c0/page/1M")
 
              )))
 
@@ -217,7 +266,19 @@ server <- function(input, output, session){
       week  = round_date(gift_date, "week"),
       month = round_date(gift_date, "month")
     ) |>
-    distinct()
+    distinct() |>
+    mutate(gift_reservation =
+             case_when(
+               fund_description == "General unrestricted"   ~ "General unrestricted",
+               str_detect(fund_description, "^COM ")        ~ "Centres of Mission",
+               str_detect(fund_description, "^Marylebone ") ~ "Marylebone",
+               str_detect(fund_description, "^Amber ")      ~ "Amber",
+               str_detect(fund_description, "^Ruby ")       ~ "Ruby",
+               str_detect(fund_description, "^Pers Supp ")  ~ "Personal support",
+               str_detect(fund_description, "^MYCN ")       ~ "MYCN"
+             ) |>
+             factor()
+    )
 
   individual <- filter(query_1, constituency_code == "Individual")
 
@@ -346,23 +407,11 @@ output$income_sources_plot <- renderPlot({
   output$forms_times_donation_plot <- renderPlot({
     processed <-
       individual |>
-      mutate(new_fund_description =
-               case_when(
-                 fund_description == "General unrestricted"   ~ "General unrestricted",
-                 str_detect(fund_description, "^COM ")        ~ "Centres of Mission",
-                 str_detect(fund_description, "^Marylebone ") ~ "Marylebone",
-                 str_detect(fund_description, "^Amber ")      ~ "Amber",
-                 str_detect(fund_description, "^Ruby ")       ~ "Ruby",
-                 str_detect(fund_description, "^Pers Supp ")  ~ "Personal support",
-                 str_detect(fund_description, "^MYCN ")       ~ "MYCN"
-                 ) |>
-               factor()
-             ) |>
       filter(
         gift_date > input$individual_donation_dates[1],
         gift_date < input$individual_donation_dates[2],
         gift_payment_type %in% input$donation_form,
-        new_fund_description %in% input$donation_reservation
+        gift_reservation %in% input$donation_reservation
       ) |>
 
       arrange(gift_date) |>
@@ -397,7 +446,8 @@ output$income_sources_plot <- renderPlot({
       filter(query_1,
              gift_date > input$individual_donation_dates[1],
              gift_date < input$individual_donation_dates[2],
-             gift_payment_type %in% input$donation_form
+             gift_payment_type %in% input$donation_form,
+             gift_reservation %in% input$donation_reservation
              ) |>
       mutate(clean_postcode =
                str_remove_all(preferred_postcode, " ") |>
@@ -440,12 +490,11 @@ output$income_sources_plot <- renderPlot({
 
    ggplot(plot_data) +
      geom_sf(aes(fill = n)) +
-     scale_fill_gradient(low = "white", high = ca_cyan()) +
+     scale_fill_gradient(name = "No. gifts", low = "white", high = ca_cyan()) +
      labs(
        x = NULL,
        y = NULL,
        title = "Where are our donors from?",
-       caption = "NB this map is does not respond to the 'reserved for' field"
      ) +
      theme(
        axis.text = element_blank(),
@@ -567,7 +616,7 @@ output$income_sources_plot <- renderPlot({
 
       scale_y_continuous(name = "Click rate", labels = percent_format()) +
 
-      ggtitle("Which of our emails have yield the highest click rates?")
+      ggtitle("Which emails meet their click rate target?")
 
   })
 
@@ -648,7 +697,10 @@ output$income_sources_plot <- renderPlot({
 
   ca_scale_colour_discrete(name = "Media")
 
-    ggplotly(melt_plot, tooltip = "text")
+    ggplotly(melt_plot, tooltip = "text") |>
+      layout(font = list(family = "Trebuchet MS",
+                         size = 14,
+                         color = "black"))
     })
 
    }
