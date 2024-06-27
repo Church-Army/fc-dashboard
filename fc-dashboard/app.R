@@ -53,7 +53,7 @@ theme_set(
 
 app      <- "cf81189c-b1be-492e-929e-6e47c3706346"
 tenant   <- "ChurchArmy787"
-redirect <- "https://church-army.shinyapps.io/FCtest"
+redirect <- "https://church-army.shinyapps.io/fcdashboard"
 resource <- c("https://graph.microsoft.com/.default", "openid")
 secret <- readLines("app-secrets/microsoft-app-secret")
 
